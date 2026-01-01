@@ -6,7 +6,13 @@ export async function GET() {
         const db = await getDatabase();
         const categories = await db.collection('categories').find({}).toArray();
 
-        return NextResponse.json({ success: true, data: categories });
+        // Convert ObjectId to string for JSON serialization
+        const serializedCategories = categories.map(category => ({
+            ...category,
+            _id: category._id.toString(),
+        }));
+
+        return NextResponse.json({ success: true, data: serializedCategories });
     } catch (error) {
         console.error('Error fetching categories:', error);
         return NextResponse.json(
@@ -19,7 +25,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, description, image } = body;
+        const { name, description } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -42,7 +48,6 @@ export async function POST(request: NextRequest) {
         const category = {
             name,
             description: description || '',
-            image: image || '',
             createdAt: new Date(),
             updatedAt: new Date(),
         };

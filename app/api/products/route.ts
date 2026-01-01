@@ -6,7 +6,13 @@ export async function GET() {
         const db = await getDatabase();
         const products = await db.collection('products').find({}).toArray();
 
-        return NextResponse.json({ success: true, data: products });
+        // Convert ObjectId to string for JSON serialization
+        const serializedProducts = products.map(product => ({
+            ...product,
+            _id: product._id.toString(),
+        }));
+
+        return NextResponse.json({ success: true, data: serializedProducts });
     } catch (error) {
         console.error('Error fetching products:', error);
         return NextResponse.json(
@@ -19,7 +25,20 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, description, price, category, brand, image, stock, sku } = body;
+        const {
+            name,
+            description,
+            images,
+            brand,
+            category,
+            price,
+            mrp,
+            stock,
+            weight,
+            flavor,
+            sku,
+            isActive
+        } = body;
 
         if (!name || !price || !category || !brand) {
             return NextResponse.json(
@@ -30,15 +49,30 @@ export async function POST(request: NextRequest) {
 
         const db = await getDatabase();
 
+        // Check for duplicate SKU if SKU is provided
+        if (sku) {
+            const existingProduct = await db.collection('products').findOne({ sku });
+            if (existingProduct) {
+                return NextResponse.json(
+                    { success: false, error: 'SKU already exists. Please use a unique SKU.' },
+                    { status: 400 }
+                );
+            }
+        }
+
         const product = {
             name,
             description: description || '',
-            price: parseFloat(price),
-            category,
+            images: Array.isArray(images) ? images : [],
             brand,
-            image: image || '',
+            category,
+            price: parseFloat(price),
+            mrp: mrp ? parseFloat(mrp) : parseFloat(price),
             stock: stock ? parseInt(stock) : 0,
+            weight: weight || '',
+            flavor: flavor || '',
             sku: sku || '',
+            isActive: isActive !== undefined ? isActive : true,
             createdAt: new Date(),
             updatedAt: new Date(),
         };

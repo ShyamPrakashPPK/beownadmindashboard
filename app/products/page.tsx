@@ -1,44 +1,43 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UserButton } from '@clerk/nextjs';
+import { LayoutWrapper } from '@/components/layout-wrapper';
+import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Plus, Edit, Trash2, Package } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Product {
     _id: string;
     name: string;
     description: string;
+    images: string[];
     price: number;
+    mrp?: number;
     category: string;
     brand: string;
-    image: string;
     stock: number;
+    weight?: string;
+    flavor?: string;
     sku: string;
-    createdAt: string;
+    isActive?: boolean;
 }
 
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        price: '',
-        category: '',
-        brand: '',
-        image: '',
-        stock: '',
-        sku: '',
-    });
-    const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-    const [brands, setBrands] = useState<{ _id: string; name: string }[]>([]);
-    const [submitting, setSubmitting] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
         fetchProducts();
-        fetchCategories();
-        fetchBrands();
     }, []);
 
     const fetchProducts = async () => {
@@ -55,309 +54,153 @@ export default function ProductsPage() {
         }
     };
 
-    const fetchCategories = async () => {
-        try {
-            const res = await fetch('/api/categories');
-            const data = await res.json();
-            if (data.success) {
-                setCategories(data.data);
-            }
-        } catch (error) {
-            console.error('Error fetching categories:', error);
-        }
-    };
-
-    const fetchBrands = async () => {
-        try {
-            const res = await fetch('/api/brands');
-            const data = await res.json();
-            if (data.success) {
-                setBrands(data.data);
-            }
-        } catch (error) {
-            console.error('Error fetching brands:', error);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSubmitting(true);
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this product?')) return;
 
         try {
-            const res = await fetch('/api/products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+            const res = await fetch(`/api/products/${id}`, {
+                method: 'DELETE',
             });
 
             const data = await res.json();
             if (data.success) {
-                setFormData({
-                    name: '',
-                    description: '',
-                    price: '',
-                    category: '',
-                    brand: '',
-                    image: '',
-                    stock: '',
-                    sku: '',
-                });
-                setShowForm(false);
                 fetchProducts();
             } else {
-                alert(data.error || 'Failed to create product');
+                alert(data.error || 'Failed to delete product');
             }
         } catch (error) {
-            console.error('Error creating product:', error);
-            alert('Failed to create product');
-        } finally {
-            setSubmitting(false);
+            console.error('Error deleting product:', error);
+            alert('Failed to delete product');
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Header */}
-            <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-6">
-                            <Link href="/dashboard" className="text-xl font-bold text-gray-900 dark:text-white">
-                                Gym Admin
-                            </Link>
-                            <nav className="flex gap-4">
-                                <Link href="/products" className="text-blue-600 dark:text-blue-400 font-medium">
-                                    Products
-                                </Link>
-                                <Link href="/categories" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                                    Categories
-                                </Link>
-                                <Link href="/brands" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                                    Brands
-                                </Link>
-                            </nav>
-                        </div>
-                        <UserButton />
+        <LayoutWrapper>
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Products</h1>
+                        <p className="text-gray-600 mt-1">Manage your product inventory</p>
                     </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Products</h1>
-                    <button
-                        onClick={() => setShowForm(!showForm)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                        {showForm ? 'Cancel' : 'Add Product'}
-                    </button>
+                    <Link href="/products/new">
+                        <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Product
+                        </Button>
+                    </Link>
                 </div>
 
-                {/* Add Product Form */}
-                {showForm && (
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add New Product</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Product Name *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Price *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        required
-                                        value={formData.price}
-                                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Category *
-                                    </label>
-                                    <select
-                                        required
-                                        value={formData.category}
-                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    >
-                                        <option value="">Select Category</option>
-                                        {categories.map((cat) => (
-                                            <option key={cat._id} value={cat.name}>
-                                                {cat.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Brand *
-                                    </label>
-                                    <select
-                                        required
-                                        value={formData.brand}
-                                        onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    >
-                                        <option value="">Select Brand</option>
-                                        {brands.map((brand) => (
-                                            <option key={brand._id} value={brand.name}>
-                                                {brand.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        SKU
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.sku}
-                                        onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Stock
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.stock}
-                                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Image URL
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={formData.image}
-                                        onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                                        placeholder="https://example.com/image.jpg"
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Description
-                                    </label>
-                                    <textarea
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        rows={4}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                            >
-                                {submitting ? 'Creating...' : 'Create Product'}
-                            </button>
-                        </form>
-                    </div>
-                )}
-
-                {/* Products List */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+                {/* Products Table */}
+                <div className="bg-white rounded-lg border border-gray-200">
                     {loading ? (
-                        <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</div>
+                        <div className="p-8 text-center text-gray-500">Loading...</div>
                     ) : products.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                            No products found. Add your first product above.
+                        <div className="p-12 text-center">
+                            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-500 mb-4">No products found</p>
+                            <Link href="/products/new">
+                                <Button variant="outline">
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Your First Product
+                                </Button>
+                            </Link>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Image
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Name
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Category
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Brand
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Price
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Stock
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            SKU
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    {products.map((product) => (
-                                        <tr key={product._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {product.image ? (
-                                                    <img src={product.image} alt={product.name} className="h-16 w-16 object-cover rounded" />
-                                                ) : (
-                                                    <div className="h-16 w-16 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center text-xs text-gray-500">
-                                                        No Image
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[100px]">Thumbnail</TableHead>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Category</TableHead>
+                                        <TableHead>Brand</TableHead>
+                                        <TableHead>Price</TableHead>
+                                        <TableHead>MRP</TableHead>
+                                        <TableHead>Stock</TableHead>
+                                        <TableHead>SKU</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {products.map((product) => {
+                                        const thumbnail = product.images && product.images.length > 0
+                                            ? product.images[0]
+                                            : null;
+                                        return (
+                                            <TableRow key={product._id}>
+                                                <TableCell>
+                                                    {thumbnail ? (
+                                                        <img
+                                                            src={thumbnail}
+                                                            alt={product.name}
+                                                            className="h-12 w-12 object-cover rounded"
+                                                        />
+                                                    ) : (
+                                                        <div className="h-12 w-12 bg-gray-100 rounded flex items-center justify-center">
+                                                            <Package className="h-6 w-6 text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="font-medium max-w-xs">
+                                                    <div>{product.name}</div>
+                                                    {product.weight && (
+                                                        <div className="text-xs text-gray-500">{product.weight}</div>
+                                                    )}
+                                                    {product.flavor && (
+                                                        <div className="text-xs text-gray-500">{product.flavor}</div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>{product.category}</TableCell>
+                                                <TableCell>{product.brand}</TableCell>
+                                                <TableCell className="font-medium">₹{product.price.toFixed(2)}</TableCell>
+                                                <TableCell>
+                                                    {product.mrp ? (
+                                                        <span className="text-gray-500 line-through">₹{product.mrp.toFixed(2)}</span>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className={product.stock > 0 ? 'text-green-600' : 'text-red-600'}>
+                                                        {product.stock}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-gray-500 text-sm">{product.sku || '-'}</TableCell>
+                                                <TableCell>
+                                                    <span className={`px-2 py-1 rounded text-xs ${product.isActive !== false
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                        {product.isActive !== false ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Link href={`/products/${product._id}/edit`}>
+                                                            <Button variant="ghost" size="icon">
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                        </Link>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDelete(product._id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4 text-red-600" />
+                                                        </Button>
                                                     </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm font-medium text-gray-900 dark:text-white">{product.name}</div>
-                                                {product.description && (
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                                                        {product.description}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                {product.category}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                {product.brand}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                                ${product.price.toFixed(2)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                {product.stock}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                {product.sku || '-'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
                         </div>
                     )}
                 </div>
-            </main>
-        </div>
+            </div>
+        </LayoutWrapper>
     );
 }
-

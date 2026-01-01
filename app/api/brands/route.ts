@@ -6,7 +6,13 @@ export async function GET() {
         const db = await getDatabase();
         const brands = await db.collection('brands').find({}).toArray();
 
-        return NextResponse.json({ success: true, data: brands });
+        // Convert ObjectId to string for JSON serialization
+        const serializedBrands = brands.map(brand => ({
+            ...brand,
+            _id: brand._id.toString(),
+        }));
+
+        return NextResponse.json({ success: true, data: serializedBrands });
     } catch (error) {
         console.error('Error fetching brands:', error);
         return NextResponse.json(
@@ -19,7 +25,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, description, image } = body;
+        const { name, description, image, coo } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -43,6 +49,7 @@ export async function POST(request: NextRequest) {
             name,
             description: description || '',
             image: image || '',
+            coo: coo || '',
             createdAt: new Date(),
             updatedAt: new Date(),
         };

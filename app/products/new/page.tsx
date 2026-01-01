@@ -1,0 +1,269 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { LayoutWrapper } from '@/components/layout-wrapper';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { MultiImageUpload } from '@/components/ui/multi-image-upload';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+
+export default function NewProductPage() {
+    const router = useRouter();
+    const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
+    const [brands, setBrands] = useState<{ _id: string; name: string }[]>([]);
+    const [submitting, setSubmitting] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        description: '',
+        images: [] as string[],
+        brand: '',
+        category: '',
+        price: '',
+        mrp: '',
+        stock: '',
+        weight: '',
+        flavor: '',
+        sku: '',
+        isActive: true,
+    });
+
+    useEffect(() => {
+        fetchCategories();
+        fetchBrands();
+    }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const res = await fetch('/api/categories');
+            const data = await res.json();
+            if (data.success) {
+                setCategories(data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    };
+
+    const fetchBrands = async () => {
+        try {
+            const res = await fetch('/api/brands');
+            const data = await res.json();
+            if (data.success) {
+                setBrands(data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching brands:', error);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+
+        try {
+            const res = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                router.push('/products');
+            } else {
+                alert(data.error || 'Failed to create product');
+            }
+        } catch (error) {
+            console.error('Error creating product:', error);
+            alert('Failed to create product');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <LayoutWrapper>
+            <div className="max-w-4xl mx-auto space-y-6">
+                <div className="flex items-center gap-4">
+                    <Link href="/products">
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
+                        <p className="text-gray-600 mt-1">Create a new product for your store</p>
+                    </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2">
+                            <Label htmlFor="name">Product Name *</Label>
+                            <Input
+                                id="name"
+                                required
+                                value={formData.name}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                                placeholder="Enter product name"
+                            />
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <MultiImageUpload
+                                value={formData.images}
+                                onChange={(urls) => setFormData((prev) => ({ ...prev, images: urls }))}
+                                label="Product Images"
+                                folder="products"
+                                maxImages={10}
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="price">Price (Selling Price) *</Label>
+                            <Input
+                                id="price"
+                                type="number"
+                                step="0.01"
+                                required
+                                value={formData.price}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, price: e.target.value }))}
+                                placeholder="0.00"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="mrp">MRP (Maximum Retail Price)</Label>
+                            <Input
+                                id="mrp"
+                                type="number"
+                                step="0.01"
+                                value={formData.mrp}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, mrp: e.target.value }))}
+                                placeholder="0.00"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="stock">Stock</Label>
+                            <Input
+                                id="stock"
+                                type="number"
+                                value={formData.stock}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, stock: e.target.value }))}
+                                placeholder="0"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="weight">Weight</Label>
+                            <Input
+                                id="weight"
+                                value={formData.weight}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, weight: e.target.value }))}
+                                placeholder="e.g., 300 g, 1 kg"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="category">Category *</Label>
+                            <Select
+                                id="category"
+                                required
+                                value={formData.category}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map((cat) => (
+                                    <option key={cat._id} value={cat.name}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </Select>
+                        </div>
+
+                        <div>
+                            <Label htmlFor="brand">Brand *</Label>
+                            <Select
+                                id="brand"
+                                required
+                                value={formData.brand}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, brand: e.target.value }))}
+                            >
+                                <option value="">Select Brand</option>
+                                {brands.map((brand) => (
+                                    <option key={brand._id} value={brand.name}>
+                                        {brand.name}
+                                    </option>
+                                ))}
+                            </Select>
+                        </div>
+
+                        <div>
+                            <Label htmlFor="flavor">Flavor</Label>
+                            <Input
+                                id="flavor"
+                                value={formData.flavor}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, flavor: e.target.value }))}
+                                placeholder="e.g., Unflavoured, Chocolate, Vanilla"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="sku">SKU *</Label>
+                            <Input
+                                id="sku"
+                                required
+                                value={formData.sku}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, sku: e.target.value }))}
+                                placeholder="Product SKU (must be unique)"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">SKU must be unique</p>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <Label htmlFor="description">Description</Label>
+                            <Textarea
+                                id="description"
+                                value={formData.description}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                                rows={4}
+                                placeholder="Product description..."
+                            />
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="isActive"
+                                    checked={formData.isActive}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
+                                />
+                                <Label htmlFor="isActive" className="cursor-pointer">
+                                    Product is active (visible on website)
+                                </Label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-4 pt-4 border-t">
+                        <Link href="/products">
+                            <Button type="button" variant="outline">
+                                Cancel
+                            </Button>
+                        </Link>
+                        <Button type="submit" disabled={submitting}>
+                            {submitting ? 'Creating...' : 'Create Product'}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </LayoutWrapper>
+    );
+}
