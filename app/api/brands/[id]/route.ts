@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { generateSlug, generateUniqueSlug } from '@/lib/slug';
 
 export async function GET(
     request: NextRequest,
@@ -42,7 +43,7 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { name, description, image, coo } = body;
+        const { name, description, image, coo, slug } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -53,8 +54,34 @@ export async function PUT(
 
         const db = await getDatabase();
 
+        // Get current brand
+        const currentBrand = await db.collection('brands').findOne({ _id: new ObjectId(id) });
+        if (!currentBrand) {
+            return NextResponse.json(
+                { success: false, error: 'Brand not found' },
+                { status: 404 }
+            );
+        }
+
+        // Generate slug if not provided or if name changed
+        let brandSlug = slug || currentBrand.slug || generateSlug(name);
+
+        // If slug changed, check for duplicates
+        if (brandSlug !== currentBrand.slug) {
+            const existingBrands = await db.collection('brands').find({
+                slug: brandSlug,
+                _id: { $ne: new ObjectId(id) }
+            }).toArray();
+
+            if (existingBrands.length > 0) {
+                const existingSlugs = existingBrands.map(b => b.slug || '');
+                brandSlug = generateUniqueSlug(brandSlug, existingSlugs);
+            }
+        }
+
         const updateData = {
             name,
+            slug: brandSlug,
             description: description || '',
             image: image || '',
             coo: coo || '',
@@ -65,13 +92,6 @@ export async function PUT(
             { _id: new ObjectId(id) },
             { $set: updateData }
         );
-
-        if (result.matchedCount === 0) {
-            return NextResponse.json(
-                { success: false, error: 'Brand not found' },
-                { status: 404 }
-            );
-        }
 
         return NextResponse.json({ success: true, data: updateData });
     } catch (error) {

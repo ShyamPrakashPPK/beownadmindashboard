@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
+import { generateSlug, generateUniqueSlug } from '@/lib/slug';
 
 export async function GET() {
     try {
@@ -25,7 +26,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, description, image, coo } = body;
+        const { name, description, image, coo, slug } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -45,8 +46,19 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Generate slug if not provided
+        let brandSlug = slug || generateSlug(name);
+
+        // Check for duplicate slug and make it unique if needed
+        const existingBrands = await db.collection('brands').find({ slug: brandSlug }).toArray();
+        if (existingBrands.length > 0) {
+            const existingSlugs = existingBrands.map(b => b.slug || '');
+            brandSlug = generateUniqueSlug(brandSlug, existingSlugs);
+        }
+
         const brand = {
             name,
+            slug: brandSlug,
             description: description || '',
             image: image || '',
             coo: coo || '',

@@ -10,26 +10,35 @@ import { Textarea } from '@/components/ui/textarea';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { generateSlug } from '@/lib/slug';
 
 export default function NewBrandPage() {
     const router = useRouter();
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
+        slug: '',
         description: '',
         image: '',
         coo: '',
     });
+    const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
 
         try {
+            // Ensure slug is sanitized before submission
+            const submitData = {
+                ...formData,
+                slug: formData.slug ? generateSlug(formData.slug) : generateSlug(formData.name),
+            };
+
             const res = await fetch('/api/brands', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(submitData),
             });
 
             const data = await res.json();
@@ -69,9 +78,43 @@ export default function NewBrandPage() {
                                 id="name"
                                 required
                                 value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                onChange={(e) => {
+                                    const newName = e.target.value;
+                                    const newSlug = slugManuallyEdited ? formData.slug : generateSlug(newName);
+                                    setFormData({ ...formData, name: newName, slug: newSlug });
+                                }}
                                 placeholder="Enter brand name"
                             />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="slug">Slug (URL-friendly) *</Label>
+                            <Input
+                                id="slug"
+                                required
+                                value={formData.slug}
+                                onChange={(e) => {
+                                    setSlugManuallyEdited(true);
+                                    // Allow manual editing, but sanitize on blur
+                                    setFormData({ ...formData, slug: e.target.value });
+                                }}
+                                onBlur={(e) => {
+                                    // Sanitize slug when user finishes editing
+                                    const sanitized = generateSlug(e.target.value);
+                                    if (sanitized !== e.target.value) {
+                                        setFormData({ ...formData, slug: sanitized });
+                                    }
+                                }}
+                                placeholder="brand-slug"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Auto-generated from name. You can edit it manually. Used for SEO-friendly URLs.
+                            </p>
+                            {formData.slug && (
+                                <p className="text-xs text-green-600 mt-1">
+                                    Slug: {formData.slug}
+                                </p>
+                            )}
                         </div>
 
                         <ImageUpload

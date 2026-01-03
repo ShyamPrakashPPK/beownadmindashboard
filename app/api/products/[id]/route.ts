@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { generateSlug, generateUniqueSlug } from '@/lib/slug';
 
 export async function GET(
     request: NextRequest,
@@ -54,6 +55,7 @@ export async function PUT(
             weight,
             flavor,
             sku,
+            slug,
             isActive
         } = body;
 
@@ -66,22 +68,45 @@ export async function PUT(
 
         const db = await getDatabase();
 
+        // Get current product
+        const currentProduct = await db.collection('products').findOne({ _id: new ObjectId(id) });
+        if (!currentProduct) {
+            return NextResponse.json(
+                { success: false, error: 'Product not found' },
+                { status: 404 }
+            );
+        }
+
         // Check for duplicate SKU if SKU is provided and different from current
-        if (sku) {
-            const currentProduct = await db.collection('products').findOne({ _id: new ObjectId(id) });
-            if (currentProduct && currentProduct.sku !== sku) {
-                const existingProduct = await db.collection('products').findOne({ sku });
-                if (existingProduct) {
-                    return NextResponse.json(
-                        { success: false, error: 'SKU already exists. Please use a unique SKU.' },
-                        { status: 400 }
-                    );
-                }
+        if (sku && currentProduct.sku !== sku) {
+            const existingProduct = await db.collection('products').findOne({ sku });
+            if (existingProduct) {
+                return NextResponse.json(
+                    { success: false, error: 'SKU already exists. Please use a unique SKU.' },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // Generate slug if not provided or if name changed
+        let productSlug = slug || currentProduct.slug || generateSlug(name);
+
+        // If slug changed, check for duplicates
+        if (productSlug !== currentProduct.slug) {
+            const existingProducts = await db.collection('products').find({
+                slug: productSlug,
+                _id: { $ne: new ObjectId(id) }
+            }).toArray();
+
+            if (existingProducts.length > 0) {
+                const existingSlugs = existingProducts.map(p => p.slug || '');
+                productSlug = generateUniqueSlug(productSlug, existingSlugs);
             }
         }
 
         const updateData = {
             name,
+            slug: productSlug,
             description: description || '',
             images: Array.isArray(images) ? images : [],
             brand,
@@ -100,13 +125,6 @@ export async function PUT(
             { _id: new ObjectId(id) },
             { $set: updateData }
         );
-
-        if (result.matchedCount === 0) {
-            return NextResponse.json(
-                { success: false, error: 'Product not found' },
-                { status: 404 }
-            );
-        }
 
         return NextResponse.json({ success: true, data: updateData });
     } catch (error) {

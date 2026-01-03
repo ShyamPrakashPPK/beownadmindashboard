@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { MultiImageUpload } from '@/components/ui/multi-image-upload';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { generateSlug } from '@/lib/slug';
 
 export default function NewProductPage() {
     const router = useRouter();
@@ -20,6 +21,7 @@ export default function NewProductPage() {
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
+        slug: '',
         description: '',
         images: [] as string[],
         brand: '',
@@ -32,6 +34,7 @@ export default function NewProductPage() {
         sku: '',
         isActive: true,
     });
+    const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
     useEffect(() => {
         fetchCategories();
@@ -67,10 +70,16 @@ export default function NewProductPage() {
         setSubmitting(true);
 
         try {
+            // Ensure slug is sanitized before submission
+            const submitData = {
+                ...formData,
+                slug: formData.slug ? generateSlug(formData.slug) : generateSlug(formData.name),
+            };
+
             const res = await fetch('/api/products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(submitData),
             });
 
             const data = await res.json();
@@ -110,9 +119,45 @@ export default function NewProductPage() {
                                 id="name"
                                 required
                                 value={formData.name}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                                onChange={(e) => {
+                                    setFormData((prev) => {
+                                        const newName = e.target.value;
+                                        const newSlug = slugManuallyEdited ? prev.slug : generateSlug(newName);
+                                        return { ...prev, name: newName, slug: newSlug };
+                                    });
+                                }}
                                 placeholder="Enter product name"
                             />
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <Label htmlFor="slug">Slug (URL-friendly) *</Label>
+                            <Input
+                                id="slug"
+                                required
+                                value={formData.slug}
+                                onChange={(e) => {
+                                    setSlugManuallyEdited(true);
+                                    // Allow manual editing, but sanitize on blur
+                                    setFormData((prev) => ({ ...prev, slug: e.target.value }));
+                                }}
+                                onBlur={(e) => {
+                                    // Sanitize slug when user finishes editing
+                                    const sanitized = generateSlug(e.target.value);
+                                    if (sanitized !== e.target.value) {
+                                        setFormData((prev) => ({ ...prev, slug: sanitized }));
+                                    }
+                                }}
+                                placeholder="product-slug"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Auto-generated from name. You can edit it manually. Used for SEO-friendly URLs.
+                            </p>
+                            {formData.slug && (
+                                <p className="text-xs text-green-600 mt-1">
+                                    Slug: {formData.slug}
+                                </p>
+                            )}
                         </div>
 
                         <div className="md:col-span-2">
